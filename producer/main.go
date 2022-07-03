@@ -25,7 +25,7 @@ func main() {
 			panic(err)
 		}
 		fmt.Println("Push ", i)
-		time.Sleep(2 * time.Second)
+		time.Sleep(3 * time.Second)
 	}
 
 }
