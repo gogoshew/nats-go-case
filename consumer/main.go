@@ -1,17 +1,17 @@
 package main
 
 import (
+	"L0_Case/consumer/api"
 	"L0_Case/consumer/inner/repo"
 	"L0_Case/consumer/models"
 	"encoding/json"
 	"github.com/nats-io/stan.go"
 	"log"
-	"time"
 )
 
 func main() {
-	var order models.Order
-	dsn := "host=localhost user=iabalymov password=Aa23768Aaa dbname=NATS port=5432 sslmode=disable TimeZone=Europe/Moscow"
+	var order *models.Order
+	dsn := "host=localhost user=postgres password=Aa23768Aaa dbname=NATS port=5432 sslmode=disable TimeZone=Europe/Moscow"
 	db, err := repo.GormConnect(dsn)
 	if err != nil {
 		log.Fatalf("err from gorm connections %s", err)
@@ -26,9 +26,16 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-
+		db.InsertRow(order)
 	})
 
-	time.Sleep(5 * time.Second)
+	server := new(api.Server)
+	handler := new(api.Handler)
+	if err := server.Run("8080", handler.InitRoutes()); err != nil {
+		log.Fatalf("error to running server %s", err.Error())
+	}
+	//handler := &api.Handler{Db: db}
+	//router, err := handler.Db.GetRowById(4)
+	//time.Sleep(5 * time.Second)
 
 }

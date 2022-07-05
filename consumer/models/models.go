@@ -7,9 +7,9 @@ type Order struct {
 	OrderUid          string    `json:"order_uid"`
 	TrackNumber       string    `json:"track_number"`
 	Entry             string    `json:"entry"`
-	Delivery          Delivery  `gorm:"foreignKey:delivery" json:"delivery"`
-	Payment           Payment   `gorm:"foreignKey:payment" json:"payment"`
-	Items             []Items   `gorm:"foreignKey:items" json:"items"`
+	Delivery          Delivery  `gorm:"foreignKey:DeliveryID" json:"delivery"`
+	Payment           Payment   `gorm:"foreignKey:PaymentID" json:"payment"`
+	Items             []Items   `gorm:"foreignKey:ItemsID" json:"items"`
 	Locale            string    `json:"locale"`
 	InternalSignature string    `json:"internal_signature"`
 	CustomerId        string    `json:"customer_id"`
@@ -21,18 +21,18 @@ type Order struct {
 }
 
 type Delivery struct {
-	ID      uint   `gorm:"primaryKey" json:"ID"`
-	Name    string `json:"name"`
-	Phone   string `json:"phone"`
-	Zip     string `json:"zip"`
-	City    string `json:"city"`
-	Address string `json:"address"`
-	Region  string `json:"region"`
-	Email   string `json:"email"`
+	DeliveryID uint   `gorm:"primaryKey" json:"DeliveryID"`
+	Name       string `json:"name"`
+	Phone      string `json:"phone"`
+	Zip        string `json:"zip"`
+	City       string `json:"city"`
+	Address    string `json:"address"`
+	Region     string `json:"region"`
+	Email      string `json:"email"`
 }
 
 type Payment struct {
-	ID           uint   `gorm:"primaryKey" json:"ID"`
+	PaymentID    uint   `gorm:"primaryKey" json:"PaymentID"`
 	Transaction  string `json:"transaction"`
 	RequestId    string `json:"request_id"`
 	Currency     string `json:"currency"`
@@ -46,7 +46,7 @@ type Payment struct {
 }
 
 type Items struct {
-	ID          uint   `gorm:"primaryKey" json:"ID"`
+	ItemsID     uint   `gorm:"primaryKey" json:"ItemsID"`
 	ChrtId      int    `json:"chrt_id"`
 	TrackNumber string `json:"track_number"`
 	Price       int    `json:"price"`
