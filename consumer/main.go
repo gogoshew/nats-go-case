@@ -4,6 +4,7 @@ import (
 	"L0_Case/consumer/api"
 	"L0_Case/consumer/inner/repo"
 	"L0_Case/consumer/models"
+	"context"
 	"encoding/json"
 	"github.com/nats-io/stan.go"
 	"log"
@@ -17,6 +18,12 @@ func main() {
 		log.Fatalf("err from gorm connections %s", err)
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	server := new(api.Server)
+	handler := new(api.Handler)
+	caches := repo.New(db)
+	repos := repo.NewRepository(db, caches)
+
 	sc, _ := stan.Connect("prod", "sub-1")
 	defer sc.Close()
 
@@ -26,14 +33,23 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		db.InsertRow(order)
+		//db.InsertRow(order)
+		id, err := repos.Db.InsertRow(order)
+		if err != nil {
+			log.Fatalf("DB: %s", err)
+		}
+		repo.Cache.Insert(*order, id)
 	})
 
-	server := new(api.Server)
-	handler := new(api.Handler)
 	if err := server.Run("8080", handler.InitRoutes()); err != nil {
 		log.Fatalf("error to running server %s", err.Error())
 	}
+
+	err = caches.Upload(ctx)
+	if err != nil {
+		log.Fatalf("cache wasn't uploaded: %s", err)
+	}
+
 	//handler := &api.Handler{Db: db}
 	//router, err := handler.Db.GetRowById(4)
 	//time.Sleep(5 * time.Second)

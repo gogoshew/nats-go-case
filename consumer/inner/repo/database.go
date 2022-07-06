@@ -9,7 +9,7 @@ import (
 )
 
 type DataBase interface {
-	InsertRow(order *models.Order)
+	InsertRow(order *models.Order) (uint, error)
 	GetRowById(id uint) (*models.Order, error)
 	GetAllRows() (*[]models.Order, error)
 }
