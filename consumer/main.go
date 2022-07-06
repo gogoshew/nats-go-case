@@ -18,7 +18,7 @@ func main() {
 		log.Fatalf("err from gorm connections %s", err)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, _ := context.WithCancel(context.Background())
 	server := new(api.Server)
 	handler := new(api.Handler)
 	caches := repo.New(db)
@@ -38,16 +38,16 @@ func main() {
 		if err != nil {
 			log.Fatalf("DB: %s", err)
 		}
-		repo.Cache.Insert(*order, id)
+		repos.Cache.Insert(*order, id)
 	})
-
-	if err := server.Run("8080", handler.InitRoutes()); err != nil {
-		log.Fatalf("error to running server %s", err.Error())
-	}
 
 	err = caches.Upload(ctx)
 	if err != nil {
 		log.Fatalf("cache wasn't uploaded: %s", err)
+	}
+
+	if err := server.Run("8080", handler.InitRoutes()); err != nil {
+		log.Fatalf("error to running server %s", err.Error())
 	}
 
 	//handler := &api.Handler{Db: db}
