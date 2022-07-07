@@ -2,56 +2,86 @@ package main
 
 import (
 	"L0_Case/consumer/api"
-	"L0_Case/consumer/inner/repo"
+	"L0_Case/consumer/configs"
+	"L0_Case/consumer/inner/handler"
+	"L0_Case/consumer/inner/nats"
+	"L0_Case/consumer/inner/repository"
+	"L0_Case/consumer/mid"
 	"L0_Case/consumer/models"
 	"context"
-	"encoding/json"
-	"github.com/nats-io/stan.go"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 )
 
 func main() {
-	var order *models.Order
-	dsn := "host=localhost user=postgres password=Aa23768Aaa dbname=NATS port=5432 sslmode=disable TimeZone=Europe/Moscow"
-	db, err := repo.GormConnect(dsn)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	conf, err := configs.InitConfig()
 	if err != nil {
-		log.Fatalf("err from gorm connections %s", err)
+		log.Fatalf("error initialization config %s", err.Error())
 	}
 
-	ctx, _ := context.WithCancel(context.Background())
-	server := new(api.Server)
-	handler := new(api.Handler)
-	caches := repo.New(db)
-	repos := repo.NewRepository(db, caches)
+	db, err := repository.GormConnect(conf)
+	if err != nil {
+		log.Fatalf("Err from gorm connection %s", err)
+	}
 
-	sc, _ := stan.Connect("prod", "sub-1")
-	defer sc.Close()
+	natsStr, err := nats.Connecting(ctx)
+	if err != nil {
+		log.Fatalf("can't create NATS-streaming connection: %s", err)
+	}
 
-	sc.Subscribe("static", func(m *stan.Msg) {
-		message := m.Data
-		err := json.Unmarshal(message, &order)
-		if err != nil {
-			panic(err)
-		}
-		//db.InsertRow(order)
-		id, err := repos.Db.InsertRow(order)
-		if err != nil {
-			log.Fatalf("DB: %s", err)
-		}
-		repos.Cache.Insert(*order, id)
-	})
+	orders := make(chan *models.Order, 10)
+
+	caches := repository.New(db)
+	repos := repository.NewRepository(db, caches)
+	handlers := handler.NewHandler(repos, orders)
 
 	err = caches.Upload(ctx)
 	if err != nil {
 		log.Fatalf("cache wasn't uploaded: %s", err)
 	}
 
-	if err := server.Run("8080", handler.InitRoutes()); err != nil {
+	go ServiceStart(natsStr, repos, orders)
+
+	server := new(api.Server)
+
+	go func() {
+		quit := make(chan os.Signal, 1)
+		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+		defer signal.Stop(quit)
+		<-quit
+
+		_ = natsStr.Close()
+		_ = server.Shutdown(context.Background())
+		cancel()
+	}()
+
+	if err := server.Run("8080", handlers.InitRoutes()); err != nil {
 		log.Fatalf("error to running server %s", err.Error())
 	}
+}
 
-	//handler := &api.Handler{Db: db}
-	//router, err := handler.Db.GetRowById(4)
-	//time.Sleep(5 * time.Second)
+func ServiceStart(nats *nats.Connector, repos *repository.Repository, orders chan *models.Order) {
+	for {
+		message, err := nats.GetMessage()
+		if err != nil {
+			log.Fatalf("NATS: %s", err)
+		}
+		order, err := mid.ValidateMessage(message)
+		if err != nil {
+			log.Fatalf("Validator: %s", err)
+		}
 
+		id, err := repos.Db.InsertRow(order)
+		if err != nil {
+			log.Fatalf("DB: %s", err)
+		}
+		repos.Cache.Insert(*order, id)
+		orders <- order
+		time.Sleep(2 * time.Second)
+	}
 }

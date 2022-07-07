@@ -19,12 +19,12 @@ func main() {
 		panic(err)
 	}
 
-	for i := 0; i <= 100; i++ {
+	for i := 1; i < 101; i++ {
 		err := sc.Publish("static", value)
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("Push ", i)
+		fmt.Println("Message: ", i)
 		time.Sleep(3 * time.Second)
 	}
 

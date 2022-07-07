@@ -7,29 +7,21 @@ import (
 	"sync"
 )
 
-// Интерфейс для стриминга
-
 type Streaming interface {
 	GetMessage() ([]byte, error)
 }
-
-// Структура подключения
 
 type Connector struct {
 	Conn stan.Conn
 }
 
-// Функция для подключения
-
 func Connecting(ctx context.Context) (*Connector, error) {
-	sc, err := stan.Connect("prod", "client-2")
+	sc, err := stan.Connect("prod", "cl-2")
 	if err != nil {
 		return nil, err
 	}
 	return &Connector{Conn: sc}, nil
 }
-
-// Функция для получения сообщения
 
 func (c *Connector) GetMessage() ([]byte, error) {
 	wg := sync.WaitGroup{}
@@ -41,8 +33,9 @@ func (c *Connector) GetMessage() ([]byte, error) {
 		wg.Done()
 	})
 	if err != nil {
-		return nil, errors.New("can't receive message")
+		return nil, errors.New("cant receive message")
 	}
+
 	wg.Wait()
 	err = sub.Unsubscribe()
 	if err != nil {
@@ -50,8 +43,6 @@ func (c *Connector) GetMessage() ([]byte, error) {
 	}
 	return message, nil
 }
-
-// Функция закрывающая соединение
 
 func (c *Connector) Close() error {
 	err := c.Conn.Close()

@@ -1,4 +1,4 @@
-package repo
+package repository
 
 type Repository struct {
 	Db    DataBase
